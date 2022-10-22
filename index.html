@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Block Producer Reporting</title>
+	
+      <!-- jQuery -->
+	  <script src='./js/jquery.js?v=$ver'></script>
+      <link rel='stylesheet' href='./dist-web/font-awesome.min.css'>
+	  
+      <!-- EOSJS -->
+      <script src='./dist-web/eosjs-api.min.js?v=$ver'></script>
+      <script src='./dist-web/eosjs-jsonrpc.min.js?v=$ver'></script>
+      <script src='./dist-web/eosjs-jssig.min.js?v=$ver'></script>
+	  
+	 <script src='./js/basic.js?v=$ver'></script>
+     <script src='./js/telosAPI.js?v=$ver'></script>
+     
+	  
+	
+    <script type='text/javascript'>
+	
+		
+		function getUrlParameter(sParam) {
+			var sPageURL = decodeURIComponent(window.location.search.substring(1)),
+				sURLVariables = sPageURL.split('&'),
+				sParameterName,
+				i;
+
+			for (i = 0; i < sURLVariables.length; i++) {
+				sParameterName = sURLVariables[i].split('=');
+
+				if (sParameterName[0] === sParam) {
+					return sParameterName[1] === undefined ? true : sParameterName[1];
+				}
+			}
+		}
+		
+		function saveTextAsFile(textToWrite, fileNameToSaveAs) {
+			
+			var textFileAsBlob = new Blob([textToWrite], {type:'text/plain'}); 
+			var downloadLink = document.createElement("a");
+			downloadLink.download = fileNameToSaveAs;
+			downloadLink.innerHTML = "Download File";
+			if (window.webkitURL != null)
+			{
+				// Chrome allows the link to be clicked
+				// without actually adding it to the DOM.
+				downloadLink.href = window.webkitURL.createObjectURL(textFileAsBlob);
+			}
+			else
+			{
+				// Firefox requires the link to be added to the DOM
+				// before it can be clicked.
+				downloadLink.href = window.URL.createObjectURL(textFileAsBlob);
+				downloadLink.onclick = destroyClickedElement;
+				downloadLink.style.display = "none";
+				document.body.appendChild(downloadLink);
+			}
+		
+			downloadLink.click();
+		}
+		
+		
+		var ROWS_OUT = [];
+		
+		function recursiveQuery(lower_bound) {
+			
+			tlos_get_table_rows(
+					"eosio", 		//contract
+					100, 			//limit (number of result)
+					"eosio",		//scope of query
+					"producers",	//table
+					"", 			//upper bound, stop here
+					lower_bound,	//lower bound, begin here
+					function(ret){
+						
+						ROWS_OUT = ROWS_OUT.concat(ret.data.rows);
+						
+						if(ret.data.more) {
+							recursiveQuery(ret.data.next_key);
+						} else {
+							$("#report_out").val(JSON.stringify(ROWS_OUT));
+						}
+					},
+					function(err) {
+						console.log(err);
+				});
+		}
+		
+		
+		$(document).ready(function() {
+			
+			$("#report_out").val("");
+			
+			$("#api_url").val("https://testnet.telos.caleos.io");
+           
+			$("#report_fetch").click(function(e) {
+				
+				telosAPIURL_chain = $("#api_url").val() + "/v1/chain/";
+				
+				recursiveQuery("");
+			});
+			
+			$("#report_download").click(function(e) {
+				saveTextAsFile($("#report_out").val(),'output.json');
+			});
+			
+		});
+	
+    </script>
+	
+		
+</head>
+<body>
+<center>
+
+	<h2>Block Producers Data Fetcher</h2>
+	
+	<input type='text' id='api_url'></input>
+	
+	<br>
+
+	<textarea id="report_out" name="report_out" rows="15" cols="80">
+	</textarea>
+
+	<br>
+
+	<button id="report_fetch">Fetch</button>
+	<button id="report_download">Download</button>
+</center>
+</body>
+</html>
